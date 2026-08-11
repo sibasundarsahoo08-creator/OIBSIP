@@ -6,6 +6,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const { rateLimit } = require("express-rate-limit");
 const connectDB = require("./config/db");
+const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
@@ -29,7 +30,7 @@ const apiLimiter = rateLimit({
 });
 
 app.use("/api", apiLimiter);
-
+app.use("/api/auth", authRoutes);
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -47,6 +48,7 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
+    const authRoutes = require("./routes/authRoutes");
   await connectDB();
 
   app.listen(PORT, () => {
