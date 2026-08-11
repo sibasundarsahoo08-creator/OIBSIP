@@ -5,6 +5,8 @@ const {
   verifyEmail,
   login,
   resendVerification,
+  forgotPassword,
+  resetPassword,
 } = require("../controllers/authController");
 
 const router = express.Router();
@@ -56,5 +58,27 @@ router.post(
       .normalizeEmail(),
   ],
   resendVerification
+);
+router.post(
+  "/forgot-password",
+  [
+    body("email")
+      .isEmail()
+      .withMessage("Enter a valid email address")
+      .normalizeEmail(),
+  ],
+  forgotPassword
+);
+
+router.post(
+  "/reset-password/:token",
+  [
+    body("password")
+      .isLength({ min: 8 })
+      .withMessage("Password must contain at least 8 characters")
+      .matches(/\d/)
+      .withMessage("Password must contain at least one number"),
+  ],
+  resetPassword
 );
 module.exports = router;
