@@ -17,7 +17,10 @@ const getBackendUrl = () => {
 };
 
 const getVerificationUrl = (token) => {
-  return `${getBackendUrl()}/api/auth/verify-email/${token}`;
+  const frontendUrl =
+    process.env.FRONTEND_URL || "http://localhost:5173";
+
+  return `${frontendUrl}/verify-email/${token}`;
 };
 
 const getResetUrl = (token) => {
@@ -365,7 +368,12 @@ const resetPassword = async (req, res) => {
     });
   }
 };
-
+const getCurrentUser = async (req, res) => {
+  return res.status(200).json({
+    success: true,
+    user: req.user,
+  });
+};
 module.exports = {
   register,
   verifyEmail,
@@ -373,4 +381,5 @@ module.exports = {
   resendVerification,
   forgotPassword,
   resetPassword,
+  getCurrentUser,
 };
