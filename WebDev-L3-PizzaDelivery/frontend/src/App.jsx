@@ -8,6 +8,9 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
 import ResetPasswordPage from "./pages/ResetPasswordPage.jsx";
 import CheckEmailPage from "./pages/CheckEmailPage.jsx";
 import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
+import PizzaBuilderPage from "./pages/PizzaBuilderPage.jsx";
+import CartPage from "./pages/CartPage.jsx";
+import CheckoutPage from "./pages/CheckoutPage.jsx"
 import "./App.css";
 
 export default function App() {
@@ -22,6 +25,12 @@ export default function App() {
       <Route path="*" element={<Navigate to="/login" replace />} />
       <Route path="/check-email" element={<CheckEmailPage />} />
       <Route path="/verify-email/:token" element={<VerifyEmailPage />}/>
-    </Routes>
+      <Route path="/pizza-builder" element={<ProtectedRoute><PizzaBuilderPage /></ProtectedRoute>}/>
+      <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>}/>
+      <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>}/>
+      <Route path="*" element={ <Navigate to="/login" replace /> }/>
+      </Routes>
   );
 }
+   
+  ;
