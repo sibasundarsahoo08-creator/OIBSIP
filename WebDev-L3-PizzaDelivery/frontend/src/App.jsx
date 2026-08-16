@@ -11,6 +11,8 @@ import VerifyEmailPage from "./pages/VerifyEmailPage.jsx";
 import PizzaBuilderPage from "./pages/PizzaBuilderPage.jsx";
 import CartPage from "./pages/CartPage.jsx";
 import CheckoutPage from "./pages/CheckoutPage.jsx"
+import MyOrdersPage from "./pages/MyOrdersPage.jsx";
+import AdminDashboardPage from "./pages/AdminDashboardPage.jsx";
 import "./App.css";
 
 export default function App() {
@@ -29,6 +31,8 @@ export default function App() {
       <Route path="/cart" element={<ProtectedRoute><CartPage /></ProtectedRoute>}/>
       <Route path="/checkout" element={<ProtectedRoute><CheckoutPage /></ProtectedRoute>}/>
       <Route path="*" element={ <Navigate to="/login" replace /> }/>
+      <Route path="/my-orders" element={<ProtectedRoute><MyOrdersPage /></ProtectedRoute>}/>
+      <Route path="/admin" element={<ProtectedRoute><AdminDashboardPage /></ProtectedRoute>}/>
       </Routes>
   );
 }

@@ -15,6 +15,7 @@ const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const catalogRoutes = require("./routes/catalogRoutes");
 const orderRoutes = require("./routes/orderRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use(
 );
 
 app.use(express.json());
+
 app.use(
   express.urlencoded({
     extended: true,
@@ -48,6 +50,7 @@ app.use("/api", apiLimiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/catalog", catalogRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.get("/api/health", (req, res) => {
   res.status(200).json({
