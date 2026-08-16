@@ -1,11 +1,16 @@
 require("dotenv").config();
 
 const dns = require("node:dns");
-dns.setServers(["8.8.8.8", "1.1.1.1"]);
+
+dns.setServers([
+  "8.8.8.8",
+  "1.1.1.1",
+]);
 
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+
 const {
   rateLimit,
 } = require("express-rate-limit");
@@ -16,6 +21,10 @@ const authRoutes = require("./routes/authRoutes");
 const catalogRoutes = require("./routes/catalogRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+
+const {
+  startLowStockJob,
+} = require("./jobs/lowStockJob");
 
 const app = express();
 
@@ -52,7 +61,15 @@ app.use("/api/catalog", catalogRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/admin", adminRoutes);
 
-app.get("/api/health", (req, res) => {
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Pizza Delivery API",
+    healthCheck: "/api/health",
+  });
+});
+
+app.get("/api/health", (_req, res) => {
   res.status(200).json({
     success: true,
     message:
@@ -60,7 +77,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-app.use((req, res) => {
+app.use((_req, res) => {
   res.status(404).json({
     success: false,
     message: "API route not found",
@@ -71,6 +88,8 @@ const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   await connectDB();
+
+  startLowStockJob();
 
   app.listen(PORT, () => {
     console.log(

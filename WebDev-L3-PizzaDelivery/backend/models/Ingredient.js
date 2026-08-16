@@ -11,7 +11,12 @@ const ingredientSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
-      enum: ["base", "sauce", "cheese", "vegetable"],
+      enum: [
+        "base",
+        "sauce",
+        "cheese",
+        "vegetable",
+      ],
     },
 
     price: {
@@ -37,11 +42,38 @@ const ingredientSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    lowStockAlertSent: {
+      type: Boolean,
+      default: false,
+    },
+
+    lowStockAlertSentAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true,
   }
 );
+
+ingredientSchema.pre("save", function () {
+  if (this.stock === 0) {
+    this.isAvailable = false;
+  }
+
+  if (this.stock > this.lowStockThreshold) {
+    this.lowStockAlertSent = false;
+    this.lowStockAlertSentAt = null;
+  }
+});
+
+ingredientSchema.index({
+  stock: 1,
+  lowStockThreshold: 1,
+  lowStockAlertSent: 1,
+});
 
 module.exports = mongoose.model(
   "Ingredient",
