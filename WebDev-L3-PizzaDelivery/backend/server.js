@@ -30,11 +30,64 @@ const app = express();
 
 app.use(helmet());
 
+const allowedOrigins = (
+  process.env.FRONTEND_URL ||
+  "http://localhost:5173"
+)
+  .split(",")
+  .map((origin) =>
+    origin.trim().replace(/\/$/, "")
+  )
+  .filter(Boolean);
+
+const isLocalDevelopmentOrigin = (
+  origin
+) => {
+  return /^http:\/\/(?:localhost|127\.0\.0\.1|192\.168(?:\.\d{1,3}){2}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}):5173$/.test(
+    origin
+  );
+};
+
 app.use(
   cors({
-    origin:
-      process.env.FRONTEND_URL ||
-      "http://localhost:5173",
+    origin(origin, callback) {
+      // Allow requests without an Origin, such as
+      // server health checks and API testing tools.
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      const normalizedOrigin =
+        origin.replace(/\/$/, "");
+
+      if (
+        allowedOrigins.includes(
+          normalizedOrigin
+        )
+      ) {
+        callback(null, true);
+        return;
+      }
+
+      if (
+        process.env.NODE_ENV !==
+          "production" &&
+        isLocalDevelopmentOrigin(
+          normalizedOrigin
+        )
+      ) {
+        callback(null, true);
+        return;
+      }
+
+      callback(
+        new Error(
+          "This website is not allowed to access the API"
+        )
+      );
+    },
+
     credentials: true,
   })
 );

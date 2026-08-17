@@ -1,18 +1,26 @@
 import axios from "axios";
 
-const currentHost = window.location.hostname;
+const currentHost =
+  window.location.hostname;
 
 const backendHost =
   currentHost === "localhost"
     ? "127.0.0.1"
     : currentHost;
 
+const localApiUrl =
+  `http://${backendHost}:5000/api`;
+
 const api = axios.create({
-  baseURL: `http://${backendHost}:5000/api`,
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    localApiUrl,
+
   headers: {
     "Content-Type": "application/json",
   },
-  timeout: 15000,
+
+  timeout: 20000,
 });
 
 api.interceptors.request.use(
@@ -22,11 +30,13 @@ api.interceptors.request.use(
     );
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      config.headers.Authorization =
+        `Bearer ${token}`;
     }
 
     return config;
   },
+
   (error) => Promise.reject(error)
 );
 
