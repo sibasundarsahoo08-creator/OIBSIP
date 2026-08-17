@@ -136,12 +136,14 @@ const orderSchema = new mongoose.Schema(
           1000 + Math.random() * 9000
         )}`,
     },
+
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
       index: true,
     },
+
     items: {
       type: [orderItemSchema],
       required: true,
@@ -152,44 +154,70 @@ const orderSchema = new mongoose.Schema(
         message: "An order must contain at least one item",
       },
     },
+
     deliveryAddress: {
       type: addressSchema,
       required: true,
     },
+
     subtotal: {
       type: Number,
       required: true,
       min: 0,
     },
+
     deliveryFee: {
       type: Number,
       required: true,
       min: 0,
       default: 40,
     },
+
     totalAmount: {
       type: Number,
       required: true,
       min: 0,
     },
+
     paymentMethod: {
       type: String,
       enum: ["cod", "razorpay"],
       default: "cod",
     },
+
     paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "failed", "refunded"],
+      enum: [
+        "pending",
+        "paid",
+        "failed",
+        "refunded",
+      ],
       default: "pending",
     },
+
     razorpayOrderId: {
       type: String,
       default: null,
+      index: true,
     },
+
     razorpayPaymentId: {
       type: String,
       default: null,
     },
+
+    razorpaySignature: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    paymentCompletedAt: {
+      type: Date,
+      default: null,
+    },
+
     orderStatus: {
       type: String,
       enum: [
@@ -213,4 +241,11 @@ orderSchema.index({
   createdAt: -1,
 });
 
-module.exports = mongoose.model("Order", orderSchema);
+orderSchema.index({
+  razorpayPaymentId: 1,
+});
+
+module.exports = mongoose.model(
+  "Order",
+  orderSchema
+);

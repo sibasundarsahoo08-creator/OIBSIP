@@ -3,11 +3,15 @@ import {
   useMemo,
   useState,
 } from "react";
+
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+
 import {
   ArrowLeft,
+  Banknote,
   CheckCircle2,
+  CreditCard,
   Home,
   ShoppingBag,
   Truck,
@@ -16,16 +20,48 @@ import {
 import api from "../api/api";
 import { useAuth } from "../context/AuthContext";
 
+const RAZORPAY_SCRIPT_URL =
+  "https://checkout.razorpay.com/v1/checkout.js";
+
 const loadCart = () => {
   try {
     const savedCart = JSON.parse(
       localStorage.getItem("pizzaCart") || "[]"
     );
 
-    return Array.isArray(savedCart) ? savedCart : [];
+    return Array.isArray(savedCart)
+      ? savedCart
+      : [];
   } catch {
     return [];
   }
+};
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+
+    const existingScript = document.querySelector(
+      `script[src="${RAZORPAY_SCRIPT_URL}"]`
+    );
+
+    if (existingScript) {
+      existingScript.remove();
+    }
+
+    const script = document.createElement("script");
+
+    script.src = RAZORPAY_SCRIPT_URL;
+    script.async = true;
+
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+
+    document.body.appendChild(script);
+  });
 };
 
 export default function CheckoutPage() {
@@ -33,8 +69,13 @@ export default function CheckoutPage() {
   const { user } = useAuth();
 
   const [cart] = useState(loadCart);
+
+  const [paymentMethod, setPaymentMethod] =
+    useState("cod");
+
   const [placingOrder, setPlacingOrder] =
     useState(false);
+
   const [completedOrder, setCompletedOrder] =
     useState(null);
 
@@ -66,8 +107,11 @@ export default function CheckoutPage() {
     );
   }, [cart]);
 
-  const deliveryFee = cart.length > 0 ? 40 : 0;
-  const totalAmount = subtotal + deliveryFee;
+  const deliveryFee =
+    cart.length > 0 ? 40 : 0;
+
+  const totalAmount =
+    subtotal + deliveryFee;
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -78,13 +122,11 @@ export default function CheckoutPage() {
     }));
   };
 
-  const placeOrder = async (event) => {
-    event.preventDefault();
-
+  const validateAndCreateAddress = () => {
     if (cart.length === 0) {
       toast.error("Your cart is empty");
       navigate("/cart");
-      return;
+      return null;
     }
 
     const requiredFields = [
@@ -97,55 +139,75 @@ export default function CheckoutPage() {
     ];
 
     const missingField = requiredFields.find(
-      (field) => !formData[field].trim()
+      (field) =>
+        !String(formData[field] || "").trim()
     );
 
     if (missingField) {
-      toast.error("Please complete the delivery address");
-      return;
+      toast.error(
+        "Please complete the delivery address"
+      );
+      return null;
     }
 
-    if (
-      !/^[0-9+\-\s]{10,15}$/.test(
-        formData.phone.trim()
-      )
-    ) {
-      toast.error("Enter a valid phone number");
-      return;
+    const phone = formData.phone.trim();
+    const postalCode =
+      formData.postalCode.trim();
+
+    if (!/^[0-9+\-\s]{10,15}$/.test(phone)) {
+      toast.error(
+        "Enter a valid phone number"
+      );
+      return null;
     }
 
     if (
       !/^[A-Za-z0-9\-\s]{4,10}$/.test(
-        formData.postalCode.trim()
+        postalCode
       )
     ) {
-      toast.error("Enter a valid postal code");
-      return;
+      toast.error(
+        "Enter a valid postal code"
+      );
+      return null;
     }
 
+    return {
+      fullName: formData.fullName.trim(),
+      phone,
+      addressLine:
+        formData.addressLine.trim(),
+      city: formData.city.trim(),
+      state: formData.state.trim(),
+      postalCode,
+    };
+  };
+
+  const completeOrder = (order, message) => {
+    localStorage.removeItem("pizzaCart");
+    setCompletedOrder(order);
+    toast.success(message);
+  };
+
+  const placeCodOrder = async (
+    deliveryAddress
+  ) => {
     setPlacingOrder(true);
 
     try {
-      const response = await api.post("/orders", {
-        items: cart,
-        deliveryAddress: {
-          fullName: formData.fullName.trim(),
-          phone: formData.phone.trim(),
-          addressLine:
-            formData.addressLine.trim(),
-          city: formData.city.trim(),
-          state: formData.state.trim(),
-          postalCode:
-            formData.postalCode.trim(),
-        },
-        paymentMethod: "cod",
-      });
+      const response = await api.post(
+        "/orders",
+        {
+          items: cart,
+          deliveryAddress,
+          paymentMethod: "cod",
+        }
+      );
 
-      localStorage.removeItem("pizzaCart");
-
-      setCompletedOrder(response.data.order);
-
-      toast.success("Order placed successfully");
+      completeOrder(
+        response.data.order,
+        "Order placed successfully"
+      );
     } catch (error) {
       toast.error(
         error.response?.data?.message ||
@@ -156,7 +218,164 @@ export default function CheckoutPage() {
     }
   };
 
+  const placeRazorpayOrder = async (
+    deliveryAddress
+  ) => {
+    setPlacingOrder(true);
+
+    try {
+      const scriptLoaded =
+        await loadRazorpayScript();
+
+      if (
+        !scriptLoaded ||
+        !window.Razorpay
+      ) {
+        throw new Error(
+          "Unable to load Razorpay Checkout"
+        );
+      }
+
+      const createResponse = await api.post(
+        "/orders/razorpay/create",
+        {
+          items: cart,
+          deliveryAddress,
+          paymentMethod: "razorpay",
+        }
+      );
+
+      const paymentData =
+        createResponse.data;
+
+      const options = {
+        key: paymentData.keyId,
+        amount: paymentData.amount,
+        currency: paymentData.currency,
+        name: "Pizza Delivery",
+        description:
+          "Pizza order payment",
+        order_id:
+          paymentData.razorpayOrderId,
+
+        prefill: {
+          name: deliveryAddress.fullName,
+          email: user?.email || "",
+          contact: deliveryAddress.phone,
+        },
+
+        notes: {
+          localOrderId:
+            paymentData.localOrderId,
+        },
+
+        theme: {
+          color: "#d62828",
+        },
+
+        retry: {
+          enabled: true,
+        },
+
+        modal: {
+          ondismiss: () => {
+            setPlacingOrder(false);
+
+            toast.error(
+              "Razorpay payment was cancelled"
+            );
+          },
+        },
+
+        handler: async (
+          razorpayResponse
+        ) => {
+          try {
+            const verifyResponse =
+              await api.post(
+                "/orders/razorpay/verify",
+                {
+                  localOrderId:
+                    paymentData.localOrderId,
+
+                  razorpay_order_id:
+                    razorpayResponse.razorpay_order_id,
+
+                  razorpay_payment_id:
+                    razorpayResponse.razorpay_payment_id,
+
+                  razorpay_signature:
+                    razorpayResponse.razorpay_signature,
+                }
+              );
+
+            completeOrder(
+              verifyResponse.data.order,
+              "Payment successful and order placed"
+            );
+          } catch (error) {
+            toast.error(
+              error.response?.data?.message ||
+                "Payment verification failed"
+            );
+          } finally {
+            setPlacingOrder(false);
+          }
+        },
+      };
+
+      const razorpayCheckout =
+        new window.Razorpay(options);
+
+      razorpayCheckout.on(
+        "payment.failed",
+        (response) => {
+          setPlacingOrder(false);
+
+          toast.error(
+            response.error?.description ||
+              "Razorpay payment failed"
+          );
+        }
+      );
+
+      razorpayCheckout.open();
+    } catch (error) {
+      setPlacingOrder(false);
+
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to start Razorpay payment"
+      );
+    }
+  };
+
+  const placeOrder = async (event) => {
+    event.preventDefault();
+
+    const deliveryAddress =
+      validateAndCreateAddress();
+
+    if (!deliveryAddress) {
+      return;
+    }
+
+    if (paymentMethod === "razorpay") {
+      await placeRazorpayOrder(
+        deliveryAddress
+      );
+      return;
+    }
+
+    await placeCodOrder(deliveryAddress);
+  };
+
   if (completedOrder) {
+    const isRazorpay =
+      completedOrder.paymentMethod ===
+      "razorpay";
+
     return (
       <main className="checkout-page">
         <section className="order-success-card">
@@ -168,16 +387,20 @@ export default function CheckoutPage() {
             Order confirmed
           </p>
 
-          <h1>Your pizza is being prepared!</h1>
+          <h1>
+            Your pizza is being prepared!
+          </h1>
 
           <p>
-            Your Cash-on-Delivery order has been
-            successfully placed.
+            {isRazorpay
+              ? "Your online payment was verified and your order was successfully placed."
+              : "Your Cash-on-Delivery order was successfully placed."}
           </p>
 
           <div className="success-order-details">
             <div>
               <span>Order number</span>
+
               <strong>
                 {completedOrder.orderNumber}
               </strong>
@@ -185,6 +408,7 @@ export default function CheckoutPage() {
 
             <div>
               <span>Total amount</span>
+
               <strong>
                 ₹{completedOrder.totalAmount}
               </strong>
@@ -192,25 +416,54 @@ export default function CheckoutPage() {
 
             <div>
               <span>Payment</span>
-              <strong>Cash on Delivery</strong>
+
+              <strong>
+                {isRazorpay
+                  ? "Paid with Razorpay"
+                  : "Cash on Delivery"}
+              </strong>
             </div>
 
             <div>
-              <span>Status</span>
+              <span>Payment status</span>
+
+              <strong>
+                {completedOrder.paymentStatus}
+              </strong>
+            </div>
+
+            <div>
+              <span>Order status</span>
+
               <strong>
                 {completedOrder.orderStatus}
               </strong>
             </div>
           </div>
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => navigate("/dashboard")}
-          >
-            <Home size={19} />
-            Return to Dashboard
-          </button>
+          <div className="checkout-success-actions">
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() =>
+                navigate("/my-orders")
+              }
+            >
+              <ShoppingBag size={19} />
+              View My Orders
+            </button>
+
+            <button
+              type="button"
+              className="outline-button"
+              onClick={() =>
+                navigate("/dashboard")
+              }
+            >
+              <Home size={19} />
+              Dashboard
+            </button>
+          </div>
         </section>
       </main>
     );
@@ -223,7 +476,9 @@ export default function CheckoutPage() {
           <button
             type="button"
             className="back-button"
-            onClick={() => navigate("/dashboard")}
+            onClick={() =>
+              navigate("/dashboard")
+            }
           >
             <ArrowLeft size={19} />
             Dashboard
@@ -238,13 +493,16 @@ export default function CheckoutPage() {
           <h2>Your cart is empty</h2>
 
           <p>
-            Add a pizza before opening checkout.
+            Add a pizza before opening
+            checkout.
           </p>
 
           <button
             type="button"
             className="primary-button"
-            onClick={() => navigate("/dashboard")}
+            onClick={() =>
+              navigate("/dashboard")
+            }
           >
             Browse Pizzas
           </button>
@@ -259,7 +517,9 @@ export default function CheckoutPage() {
         <button
           type="button"
           className="back-button"
-          onClick={() => navigate("/cart")}
+          onClick={() =>
+            navigate("/cart")
+          }
         >
           <ArrowLeft size={19} />
           Back to Cart
@@ -268,7 +528,8 @@ export default function CheckoutPage() {
         <h2>🍕 Pizza Delivery</h2>
 
         <div className="builder-price">
-          Total: <strong>₹{totalAmount}</strong>
+          Total:{" "}
+          <strong>₹{totalAmount}</strong>
         </div>
       </nav>
 
@@ -280,8 +541,8 @@ export default function CheckoutPage() {
         <h1>Delivery Details</h1>
 
         <p>
-          Enter the address where you want your pizza
-          delivered.
+          Enter the address where you want
+          your pizza delivered.
         </p>
       </section>
 
@@ -295,9 +556,10 @@ export default function CheckoutPage() {
 
             <div>
               <h2>Delivery Address</h2>
+
               <p>
-                Please provide accurate delivery
-                information.
+                Please provide accurate
+                delivery information.
               </p>
             </div>
           </div>
@@ -382,17 +644,76 @@ export default function CheckoutPage() {
             </label>
           </div>
 
-          <div className="payment-method-card">
-            <span className="payment-radio">
-              <span />
-            </span>
+          <div className="payment-selection">
+            <div className="checkout-section-title">
+              <CreditCard size={25} />
 
-            <div>
-              <strong>Cash on Delivery</strong>
+              <div>
+                <h2>Payment Method</h2>
 
-              <p>
-                Pay with cash when your pizza arrives.
-              </p>
+                <p>
+                  Select how you want to pay.
+                </p>
+              </div>
+            </div>
+
+            <div className="payment-options">
+              <button
+                type="button"
+                className={`payment-method-card ${
+                  paymentMethod === "cod"
+                    ? "selected"
+                    : ""
+                }`}
+                onClick={() =>
+                  setPaymentMethod("cod")
+                }
+              >
+                <span className="payment-radio">
+                  <span />
+                </span>
+
+                <Banknote size={28} />
+
+                <div>
+                  <strong>
+                    Cash on Delivery
+                  </strong>
+
+                  <p>
+                    Pay when your pizza arrives.
+                  </p>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`payment-method-card ${
+                  paymentMethod === "razorpay"
+                    ? "selected"
+                    : ""
+                }`}
+                onClick={() =>
+                  setPaymentMethod("razorpay")
+                }
+              >
+                <span className="payment-radio">
+                  <span />
+                </span>
+
+                <CreditCard size={28} />
+
+                <div>
+                  <strong>
+                    Pay Online
+                  </strong>
+
+                  <p>
+                    Secure payment using
+                    Razorpay Test Mode.
+                  </p>
+                </div>
+              </button>
             </div>
           </div>
         </section>
@@ -411,13 +732,16 @@ export default function CheckoutPage() {
                 }
               >
                 <span>
-                  {item.quantity} × {item.name}
+                  {item.quantity} ×{" "}
+                  {item.name}
                 </span>
 
                 <strong>
                   ₹
                   {Number(item.price || 0) *
-                    Number(item.quantity || 1)}
+                    Number(
+                      item.quantity || 1
+                    )}
                 </strong>
               </div>
             ))}
@@ -444,9 +768,20 @@ export default function CheckoutPage() {
             disabled={placingOrder}
           >
             {placingOrder
-              ? "Placing Order..."
-              : "Place Cash-on-Delivery Order"}
+              ? paymentMethod === "razorpay"
+                ? "Opening Razorpay..."
+                : "Placing Order..."
+              : paymentMethod === "razorpay"
+                ? `Pay ₹${totalAmount} Online`
+                : "Place Cash-on-Delivery Order"}
           </button>
+
+          {paymentMethod === "razorpay" && (
+            <p className="payment-security-note">
+              Razorpay Test Mode — no real
+              money will be charged.
+            </p>
+          )}
         </aside>
       </form>
     </main>
