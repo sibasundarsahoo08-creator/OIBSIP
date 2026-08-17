@@ -232,7 +232,7 @@ const buildOrderDetails = async (
     ) {
       throw createError(
         400,
-        "Pizza quantity must be between 1 and 20"
+        "Item quantity must be between 1 and 20"
       );
     }
 
@@ -244,7 +244,7 @@ const buildOrderDetails = async (
       ) {
         throw createError(
           400,
-          "Invalid catalogue pizza"
+          "Invalid catalogue item"
         );
       }
 
@@ -260,7 +260,7 @@ const buildOrderDetails = async (
       if (!pizza) {
         throw createError(
           404,
-          "A pizza in your cart was not found"
+          "An item in your cart was not found"
         );
       }
 
@@ -275,7 +275,9 @@ const buildOrderDetails = async (
         itemType: "catalogue",
         pizzaId: pizza._id,
         name: pizza.name,
+        image: pizza.image || "",
         emoji: pizza.emoji || "🍕",
+        menuSection: pizza.menuSection || "pizza",
         price: pizza.price,
         quantity,
         customPizza: null,
@@ -395,7 +397,9 @@ const buildOrderDetails = async (
       itemType: "custom",
       pizzaId: null,
       name: "My Custom Pizza",
+      image: "/menu/custom-pizza.webp",
       emoji: "🍕",
+      menuSection: "pizza",
       price: customPizzaPrice,
       quantity,
       customPizza: {

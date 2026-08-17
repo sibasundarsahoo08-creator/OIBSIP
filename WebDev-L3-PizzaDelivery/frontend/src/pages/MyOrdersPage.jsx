@@ -15,6 +15,10 @@ import {
 } from "lucide-react";
 
 import api from "../api/api";
+import {
+    getMenuImage,
+    getMenuSectionLabel,
+} from "../utils/menuImages";
 
 const orderSteps = [
     "placed",
@@ -32,6 +36,31 @@ const statusLabels = {
     delivered: "Delivered",
     cancelled: "Cancelled",
 };
+
+function OrderedItemImage({ item }) {
+    const [imageFailed, setImageFailed] =
+        useState(false);
+
+    const imageUrl = getMenuImage(item);
+
+    if (!imageUrl || imageFailed) {
+        return (
+            <span className="ordered-item-image-fallback">
+                {item.emoji || "🍕"}
+            </span>
+        );
+    }
+
+    return (
+        <img
+            className="ordered-item-image"
+            src={imageUrl}
+            alt={item.name}
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+        />
+    );
+}
 
 export default function MyOrdersPage() {
     const navigate = useNavigate();
@@ -228,9 +257,11 @@ export default function MyOrdersPage() {
                                                 className="ordered-item"
                                                 key={item._id}
                                             >
-                                                <span className="ordered-item-emoji">
-                                                    {item.emoji || "🍕"}
-                                                </span>
+                                                <div className="ordered-item-emoji ordered-item-image-shell">
+                                                    <OrderedItemImage
+                                                        item={item}
+                                                    />
+                                                </div>
 
                                                 <div>
                                                     <strong>{item.name}</strong>
@@ -238,9 +269,8 @@ export default function MyOrdersPage() {
                                                     <p>
                                                         {item.quantity} × ₹
                                                         {item.price}
-                                                        {item.itemType === "custom"
-                                                            ? " · Custom Pizza"
-                                                            : ""}
+                                                        {" · "}
+                                                        {getMenuSectionLabel(item)}
                                                     </p>
                                                 </div>
 

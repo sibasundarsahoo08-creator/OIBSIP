@@ -19,9 +19,38 @@ import {
 
 import api from "../api/api";
 import { useAuth } from "../context/AuthContext";
+import {
+  getMenuImage,
+  getMenuSectionLabel,
+} from "../utils/menuImages";
 
 const RAZORPAY_SCRIPT_URL =
   "https://checkout.razorpay.com/v1/checkout.js";
+
+function CheckoutItemImage({ item }) {
+  const [imageFailed, setImageFailed] =
+    useState(false);
+
+  const imageUrl = getMenuImage(item);
+
+  if (!imageUrl || imageFailed) {
+    return (
+      <span className="checkout-item-image-fallback">
+        {item.emoji || "🍕"}
+      </span>
+    );
+  }
+
+  return (
+    <img
+      className="checkout-item-image"
+      src={imageUrl}
+      alt={item.name}
+      loading="lazy"
+      onError={() => setImageFailed(true)}
+    />
+  );
+}
 
 const loadCart = () => {
   try {
@@ -724,24 +753,29 @@ export default function CheckoutPage() {
           <div className="checkout-items">
             {cart.map((item, index) => (
               <div
-                className="checkout-item"
+                className="checkout-item checkout-item-with-image"
                 key={
                   item.cartItemId ||
                   item.pizzaId ||
                   `${item.name}-${index}`
                 }
               >
-                <span>
-                  {item.quantity} ×{" "}
-                  {item.name}
-                </span>
+                <div className="checkout-item-image-shell">
+                  <CheckoutItemImage item={item} />
+                </div>
 
-                <strong>
+                <div className="checkout-item-copy">
+                  <span>{getMenuSectionLabel(item)}</span>
+                  <strong>{item.name}</strong>
+                  <p>
+                    {item.quantity} × ₹{item.price}
+                  </p>
+                </div>
+
+                <strong className="checkout-item-total">
                   ₹
                   {Number(item.price || 0) *
-                    Number(
-                      item.quantity || 1
-                    )}
+                    Number(item.quantity || 1)}
                 </strong>
               </div>
             ))}

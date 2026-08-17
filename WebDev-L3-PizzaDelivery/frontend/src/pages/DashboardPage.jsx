@@ -1,100 +1,176 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import {ChefHat,LogOut,Package,ShoppingCart,Star,} from "lucide-react";
+import {
+  ChefHat,
+  LogOut,
+  PackageOpen,
+  Search,
+  ShoppingCart,
+  Star,
+} from "lucide-react";
+
 import api from "../api/api";
 import { useAuth } from "../context/AuthContext";
+import { getMenuImage } from "../utils/menuImages";
 
-const getSavedCart = () => {
-  try {
-    const savedCart = JSON.parse(
-      localStorage.getItem("pizzaCart") || "[]"
-    );
+const menuTabs = [
+  { value: "all", label: "All" },
+  { value: "pizza", label: "Pizzas" },
+  { value: "starter", label: "Starters" },
+  { value: "drink", label: "Cold Drinks" },
+];
 
-    return Array.isArray(savedCart) ? savedCart : [];
-  } catch {
-    return [];
-  }
+const sectionLabel = {
+  pizza: "Pizza",
+  starter: "Starter",
+  drink: "Cold Drink",
 };
+
+function MenuArtwork({ item }) {
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageUrl = getMenuImage(item);
+
+  if (!imageUrl || imageFailed) {
+    return (
+      <div className="pizza-image-fallback" aria-hidden="true">
+        {item.emoji || "🍕"}
+      </div>
+    );
+  }
+
+  return (
+    <img
+      className="pizza-image"
+      src={imageUrl}
+      alt={item.name}
+      loading="lazy"
+      onError={() => setImageFailed(true)}
+    />
+  );
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  const [pizzas, setPizzas] = useState([]);
+  const [menuItems, setMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
-
+  const [activeSection, setActiveSection] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [cartCount, setCartCount] = useState(() => {
-    const savedCart = getSavedCart();
+    const savedCart = JSON.parse(
+      localStorage.getItem("pizzaCart") || "[]"
+    );
 
     return savedCart.reduce(
-      (total, item) =>
-        total + Number(item.quantity || 1),
+      (total, item) => total + Number(item.quantity || 1),
       0
     );
   });
 
   useEffect(() => {
-    const loadPizzas = async () => {
+    const loadMenu = async () => {
       try {
-        const response = await api.get(
-          "/catalog/pizzas"
-        );
+        const response = await api.get("/catalog/pizzas");
+        const loadedItems = response.data.pizzas || [];
+        setMenuItems(loadedItems);
 
-        setPizzas(response.data.pizzas || []);
+        const savedCart = JSON.parse(
+          localStorage.getItem("pizzaCart") || "[]"
+        );
+        const menuByName = new Map(
+          loadedItems.map((item) => [item.name, item])
+        );
+        const migratedCart = (Array.isArray(savedCart) ? savedCart : [])
+          .map((cartItem) => {
+            if (cartItem.itemType === "custom") return cartItem;
+
+            const currentItem = menuByName.get(cartItem.name);
+            if (!currentItem) return null;
+
+            return {
+              ...cartItem,
+              pizzaId: currentItem._id,
+              price: currentItem.price,
+              image: getMenuImage(currentItem),
+              emoji: currentItem.emoji,
+              menuSection: currentItem.menuSection || "pizza",
+            };
+          })
+          .filter(Boolean);
+
+        localStorage.setItem("pizzaCart", JSON.stringify(migratedCart));
+        setCartCount(
+          migratedCart.reduce(
+            (total, item) => total + Number(item.quantity || 1),
+            0
+          )
+        );
       } catch (error) {
         toast.error(
-          error.response?.data?.message ||
-          "Unable to load pizza catalogue"
+          error.response?.data?.message || "Unable to load the menu"
         );
       } finally {
         setLoading(false);
       }
     };
 
-    loadPizzas();
+    loadMenu();
   }, []);
+
+  const filteredItems = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+
+    return menuItems.filter((item) => {
+      const matchesSection =
+        activeSection === "all" || item.menuSection === activeSection;
+      const matchesSearch =
+        !normalizedSearch ||
+        item.name.toLowerCase().includes(normalizedSearch) ||
+        item.description.toLowerCase().includes(normalizedSearch);
+
+      return matchesSection && matchesSearch;
+    });
+  }, [activeSection, menuItems, searchTerm]);
 
   const handleLogout = () => {
     logout();
     navigate("/login");
   };
 
-  const addToCart = (pizza) => {
-    const cart = getSavedCart();
+  const addToCart = (item) => {
+    const cart = JSON.parse(
+      localStorage.getItem("pizzaCart") || "[]"
+    );
 
     const existingItem = cart.find(
-      (item) => item.pizzaId === pizza._id
+      (cartItem) => cartItem.pizzaId === item._id
     );
 
     if (existingItem) {
-      existingItem.quantity =
-        Number(existingItem.quantity || 1) + 1;
+      existingItem.quantity += 1;
     } else {
       cart.push({
         itemType: "catalogue",
-        pizzaId: pizza._id,
-        name: pizza.name,
-        price: pizza.price,
-        emoji: pizza.emoji || "🍕",
+        pizzaId: item._id,
+        name: item.name,
+        price: item.price,
+        image: getMenuImage(item),
+        emoji: item.emoji,
+        menuSection: item.menuSection || "pizza",
         quantity: 1,
       });
     }
 
-    localStorage.setItem(
-      "pizzaCart",
-      JSON.stringify(cart)
-    );
-
+    localStorage.setItem("pizzaCart", JSON.stringify(cart));
     setCartCount(
       cart.reduce(
-        (total, item) =>
-          total + Number(item.quantity || 1),
+        (total, cartItem) => total + Number(cartItem.quantity || 1),
         0
       )
     );
-
-    toast.success(`${pizza.name} added to cart`);
+    toast.success(`${item.name} added to cart`);
   };
 
   return (
@@ -104,34 +180,20 @@ export default function DashboardPage() {
 
         <div className="nav-actions">
           <button
-            type="button"
             className="cart-button"
             onClick={() => navigate("/my-orders")}
           >
-            <Package size={19} />
+            <PackageOpen size={19} />
             My Orders
           </button>
 
-          <button
-            type="button"
-            className="cart-button"
-            onClick={() => navigate("/cart")}
-          >
+          <button className="cart-button" onClick={() => navigate("/cart")}>
             <ShoppingCart size={19} />
             Cart
-
-            {cartCount > 0 && (
-              <span className="cart-count">
-                {cartCount}
-              </span>
-            )}
+            {cartCount > 0 && <span className="cart-count">{cartCount}</span>}
           </button>
 
-          <button
-            type="button"
-            className="outline-button"
-            onClick={handleLogout}
-          >
+          <button className="outline-button" onClick={handleLogout}>
             <LogOut size={18} />
             Logout
           </button>
@@ -139,23 +201,16 @@ export default function DashboardPage() {
       </nav>
 
       <section className="welcome-panel">
-        <p className="eyebrow">
-          Customer Dashboard
-        </p>
-
-        <h1>Welcome, {user?.name}!</h1>
-
+        <p className="eyebrow">Customer Dashboard</p>
+        <h1>Welcome, {user?.name || "Customer"}!</h1>
         <p>
-          Choose one of our popular pizzas or create
-          your own pizza exactly the way you like it.
+          Order pizzas, starters and refreshing drinks, or build your own
+          favourite pizza.
         </p>
 
         <button
-          type="button"
           className="builder-button"
-          onClick={() =>
-            navigate("/pizza-builder")
-          }
+          onClick={() => navigate("/pizza-builder")}
         >
           <ChefHat size={20} />
           Build Your Own Pizza
@@ -165,72 +220,75 @@ export default function DashboardPage() {
       <section className="catalogue-section">
         <div className="section-heading">
           <div>
-            <p className="eyebrow">
-              Freshly prepared
-            </p>
+            <p className="eyebrow">Freshly prepared</p>
+            <h2>Explore Our Menu</h2>
+          </div>
+          <p>{menuItems.length} items available</p>
+        </div>
 
-            <h2>Our Pizza Menu</h2>
+        <div className="menu-toolbar">
+          <div className="menu-tabs" role="tablist" aria-label="Menu sections">
+            {menuTabs.map((tab) => (
+              <button
+                type="button"
+                className={activeSection === tab.value ? "active" : ""}
+                key={tab.value}
+                onClick={() => setActiveSection(tab.value)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          <p>
-            {pizzas.length} varieties available
-          </p>
+          <label className="menu-search">
+            <Search size={18} />
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search the menu"
+            />
+          </label>
         </div>
 
         {loading ? (
+          <div className="catalogue-message">Loading the menu...</div>
+        ) : filteredItems.length === 0 ? (
           <div className="catalogue-message">
-            Loading delicious pizzas...
-          </div>
-        ) : pizzas.length === 0 ? (
-          <div className="catalogue-message">
-            No pizzas are currently available. Run
-            the catalogue seed command in the
-            backend.
+            No matching menu items were found.
           </div>
         ) : (
           <div className="pizza-grid">
-            {pizzas.map((pizza) => (
-              <article
-                className="pizza-card"
-                key={pizza._id}
-              >
-                {pizza.isFeatured && (
-                  <span className="featured-badge">
-                    <Star
-                      size={14}
-                      fill="currentColor"
-                    />
-                    Popular
-                  </span>
-                )}
-
-                <div className="pizza-emoji">
-                  {pizza.emoji || "🍕"}
+            {filteredItems.map((item) => (
+              <article className="pizza-card" key={item._id}>
+                <div className="pizza-image-shell">
+                  {item.isFeatured && (
+                    <span className="featured-badge">
+                      <Star size={14} fill="currentColor" />
+                      Popular
+                    </span>
+                  )}
+                  <MenuArtwork item={item} />
                 </div>
 
                 <div className="pizza-details">
-                  <span
-                    className={`food-type ${pizza.category}`}
-                  >
-                    {pizza.category ===
-                      "vegetarian"
-                      ? "Veg"
-                      : "Non-Veg"}
-                  </span>
+                  <div className="menu-card-labels">
+                    <span className={`food-type ${item.category}`}>
+                      {item.category === "vegetarian" ? "Veg" : "Non-Veg"}
+                    </span>
+                    <span className={`menu-section-badge ${item.menuSection}`}>
+                      {sectionLabel[item.menuSection] || "Pizza"}
+                    </span>
+                  </div>
 
-                  <h3>{pizza.name}</h3>
-
-                  <p>{pizza.description}</p>
+                  <h3>{item.name}</h3>
+                  <p>{item.description}</p>
 
                   <div className="pizza-card-footer">
-                    <strong>₹{pizza.price}</strong>
-
+                    <strong>₹{item.price}</strong>
                     <button
-                      type="button"
                       className="small-primary-button"
-                      onClick={() =>
-                        addToCart(pizza)
-                      }
+                      onClick={() => addToCart(item)}
                     >
                       <ShoppingCart size={17} />
                       Add

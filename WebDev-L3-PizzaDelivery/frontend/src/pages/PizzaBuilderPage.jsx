@@ -4,7 +4,6 @@ import toast from "react-hot-toast";
 import {
   ArrowLeft,
   Check,
-  ChefHat,
   ChevronLeft,
   ChevronRight,
   ShoppingCart,
@@ -160,7 +159,9 @@ export default function PizzaBuilderPage() {
       cartItemId: `custom-${Date.now()}`,
       itemType: "custom",
       name: "My Custom Pizza",
+      image: "/menu/custom-pizza.webp",
       emoji: "🍕",
+      menuSection: "pizza",
       quantity: 1,
       price: totalPrice,
       customPizza: {
@@ -277,8 +278,12 @@ export default function PizzaBuilderPage() {
           </p>
         </div>
 
-        <div className="builder-illustration">
-          <ChefHat size={70} />
+        <div className="builder-illustration builder-pizza-illustration">
+          <img
+            src="/menu/custom-pizza.webp"
+            alt="Custom pizza"
+            className="builder-hero-pizza"
+          />
         </div>
       </section>
 
@@ -364,7 +369,12 @@ export default function PizzaBuilderPage() {
         </div>
 
         <aside className="pizza-summary">
-          <div className="summary-pizza">🍕</div>
+          <div className="summary-pizza custom-pizza-preview">
+            <img
+              src="/menu/custom-pizza.webp"
+              alt="Your custom pizza"
+            />
+          </div>
           <h3>Your Pizza</h3>
 
           <div className="summary-row">

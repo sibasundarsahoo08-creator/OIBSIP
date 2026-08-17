@@ -14,6 +14,7 @@ import CheckoutPage from "./pages/CheckoutPage.jsx"
 import MyOrdersPage from "./pages/MyOrdersPage.jsx";
 import AdminDashboardPage from "./pages/AdminDashboardPage.jsx";
 import "./App.css";
+import "./unique-interface-theme.css";
 
 export default function App() {
   return (
@@ -38,3 +39,4 @@ export default function App() {
 }
    
   ;
+
