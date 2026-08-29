@@ -19,6 +19,42 @@ About the project
 This project was developed for the Oasis Infobyte Web Development Internship — Level 3 Pizza Delivery Application. It provides a complete ordering experience for customers and a dedicated management interface for administrators.
 
 The application uses the custom Ember & Basil visual theme, featuring charcoal navigation, warm restaurant-inspired surfaces, circular product imagery, and responsive layouts for desktop and mobile screens.
+## Menu preview
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="WebDev-L3-PizzaDelivery/frontend/public/menu/margherita-classic.webp" width="220" alt="Margherita Classic Pizza">
+      <br><b>Margherita Classic</b>
+    </td>
+    <td align="center">
+      <img src="WebDev-L3-PizzaDelivery/frontend/public/menu/tandoori-paneer-blaze.webp" width="220" alt="Tandoori Paneer Pizza">
+      <br><b>Tandoori Paneer Blaze</b>
+    </td>
+    <td align="center">
+      <img src="WebDev-L3-PizzaDelivery/frontend/public/menu/spicy-chicken-pizza.webp" width="220" alt="Spicy Chicken Pizza">
+      <br><b>Spicy Chicken Pizza</b>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="WebDev-L3-PizzaDelivery/frontend/public/menu/cheesy-garlic-bread.webp" width="220" alt="Cheesy Garlic Bread">
+      <br><b>Cheesy Garlic Bread</b>
+    </td>
+    <td align="center">
+      <img src="WebDev-L3-PizzaDelivery/frontend/public/menu/crispy-chicken-wings.webp" width="220" alt="Crispy Chicken Wings">
+      <br><b>Crispy Chicken Wings</b>
+    </td>
+    <td align="center">
+      <img src="WebDev-L3-PizzaDelivery/frontend/public/menu/orange-fizz.webp" width="220" alt="Orange Fizz">
+      <br><b>Orange Fizz</b>
+    </td>
+  </tr>
+</table>
+
+</div>
 
 Key features
 
