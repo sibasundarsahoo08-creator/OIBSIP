@@ -342,6 +342,12 @@ For a quick deployment test, open the [API health endpoint](https://oibsip-pizza
 - Restaurant analytics and sales reports
 - Progressive Web App support
 
+## Project report
+
+A detailed project report covering architecture, features, security, testing, deployment and development outcomes is available below:
+
+[Download the complete project report](WebDev-L3-PizzaDelivery/docs/Siba_Sundar_Sahoo_Pizza_Delivery_Project_Report.pdf)
+
 ## Author
 
 **Siba Sundar Sahoo**
@@ -356,3 +362,4 @@ For a quick deployment test, open the [API health endpoint](https://oibsip-pizza
 Developed as part of the **Oasis Infobyte Web Development Internship**.
 
 </div>
+
