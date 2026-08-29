@@ -1,9 +1,3 @@
-/* ================================================================
-   PIZZA DELIVERY — EMBER & BASIL INTERFACE
-   Add this file once at the very bottom of frontend/src/App.css.
-   It changes presentation only; no application logic is modified.
-   ================================================================ */
-
 :root {
   --ember: #ff5a36;
   --ember-dark: #dc351e;
@@ -1137,3 +1131,76 @@ body,
 }
 
 /* === CIRCULAR MENU IMAGE FIX END === */
+
+/* === MENU CARD NAME VISIBILITY FIX === */
+
+.pizza-card {
+  grid-template-rows: 270px minmax(0, 1fr);
+}
+
+.pizza-image-shell {
+  grid-row: 1;
+  height: 270px;
+  min-height: 270px;
+}
+
+.pizza-details {
+  position: relative;
+  z-index: 2;
+  grid-row: 2;
+  width: 100%;
+  background: #ffffff;
+}
+
+.pizza-details h3 {
+  position: relative;
+  z-index: 3;
+  margin-top: 12px;
+}
+
+@media (max-width: 680px) {
+  .pizza-card {
+    grid-template-rows: 230px minmax(0, 1fr);
+  }
+
+  .pizza-image-shell {
+    height: 230px;
+    min-height: 230px;
+  }
+}
+
+/* === MENU CARD NAME VISIBILITY FIX END === */
+
+
+/* === SEARCH FIELD OVERLAP FIX === */
+
+.menu-search {
+  box-sizing: border-box;
+  overflow: hidden;
+  border: 1px solid transparent;
+  outline: none;
+  box-shadow: inset 0 0 0 1px rgba(117, 107, 112, 0.08);
+}
+
+.menu-search:focus-within {
+  border-color: #ff5a36;
+  outline: none;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(255, 90, 54, 0.12);
+}
+
+.menu-search input,
+.menu-search input:focus,
+.menu-search input:focus-visible {
+  width: 100%;
+  min-width: 0;
+  border: 0 !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* === SEARCH FIELD OVERLAP FIX END === */
+
